@@ -61,7 +61,7 @@ A working BloodHound CE instance with AD data already ingested is required befor
 ### 1. Clone
 
 ```bash
-git clone https://github.com/WorldBuilder21/capstone_project.git
+git clone https://github.com/Dyonis-afk/capstone_project.git
 cd capstone_project
 ```
 
