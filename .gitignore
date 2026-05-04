@@ -1,0 +1,45 @@
+# Environment variables (must never ship — contain API keys / HMAC secret)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+.pytest_cache/
+
+# Node / Electron
+node_modules/
+dist/
+dist-electron/
+release/
+
+# RAG vector store and training corpus (not shipped — see Resources in README)
+aegis_vector_db/
+backend/training_data/
+
+# Runtime logs
+backend/logs/
+*.log
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local state
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

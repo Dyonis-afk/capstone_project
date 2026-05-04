@@ -1,0 +1,55 @@
+# AEGIS Backend - Render Blueprint
+# https://render.com/docs/blueprint-spec
+#
+# Deploy with: Connect repo to Render, it will auto-detect this file
+# Or manually: render blueprint apply
+
+services:
+  - type: web
+    name: aegis-backend
+    env: docker
+
+    # Render region - choose closest to your users
+    # Options: oregon, ohio, virginia, frankfurt, singapore
+    region: oregon
+
+    # Plan: starter ($7/mo) for beta, standard ($25/mo) for growth
+    plan: starter
+
+    # Root directory for the backend (monorepo support)
+    rootDir: backend
+
+    # Health check endpoint
+    healthCheckPath: /health
+
+    # Number of instances (increase for scaling)
+    numInstances: 1
+
+    # Environment variables
+    # IMPORTANT: Set OPENAI_API_KEY and DEEPSEEK_API_KEY in Render dashboard
+    envVars:
+      - key: PYTHON_ENV
+        value: production
+      - key: AEGIS_LOG_MODE
+        value: production
+      - key: VECTOR_DB_PATH
+        value: /app/aegis_vector_db
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in dashboard (secret)
+      - key: DEEPSEEK_API_KEY
+        sync: false  # Set manually in dashboard (secret)
+
+    # Persistent disk for ChromaDB vector database
+    disk:
+      name: aegis-vector-db
+      mountPath: /app/aegis_vector_db
+      sizeGB: 1  # 1GB should be plenty (~730MB vector DB)
+
+    # Build settings
+    buildCommand: ""  # Dockerfile handles everything
+
+    # Auto-deploy on push to branch
+    autoDeploy: true
+
+    # Branch to deploy from
+    branch: production  # Change to 'main' if deploying from main branch

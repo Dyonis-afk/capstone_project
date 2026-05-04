@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs (will be created fresh in container)
+logs/
+*.log
+
+# Environment files (secrets set via Render dashboard)
+.env
+.env.*
+*.env
+
+# Documentation
+*.md
+docs/
+
+# Tests
+tests/
+test_*.py
+*_test.py
+pytest.ini
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vector database (mounted as persistent disk, not baked in)
+aegis_vector_db/
+
+# Misc
+*.bak
+*.tmp

@@ -1,0 +1,465 @@
+@import "tailwindcss";
+
+/* 
+
+How the naming works
+Tailwind v4 uses a naming convention:
+CSS variable: --color-aegis-dark
+Tailwind removes the --color- prefix
+The remaining part (aegis-dark) becomes the color name
+
+AEGIS Color Palette - GitHub Dark Theme
+Professional security tool aesthetic with excellent contrast
+*/
+
+@theme {
+  /* ============================================
+     Background Colors - Deep Dark Grays
+     ============================================ */
+  --color-aegis-dark: #0d1117;
+  /* Main background - Very dark */
+  --color-aegis-darker: #010409;
+  /* Terminal/code background - Almost black */
+  --color-aegis-gray: #161b22;
+  /* Card background */
+  --color-aegis-gray-hover: #1c2128;
+  /* Card hover state */
+  --color-aegis-gray-light: #21262d;
+  /* Elevated elements */
+
+  /* ============================================
+     Border Colors - Subtle Separators
+     ============================================ */
+  --color-aegis-border: #30363d;
+  /* Main borders */
+  --color-aegis-border-light: #21262d;
+  /* Lighter borders */
+  --color-aegis-border-muted: #484f58;
+  /* Hover/active borders */
+
+  /* ============================================
+     Text Colors - Grays with Good Contrast
+     ============================================ */
+  --color-aegis-text: #c9d1d9;
+  /* Primary text - Light gray */
+  --color-aegis-text-muted: #8b949e;
+  /* Secondary text */
+  --color-aegis-text-subtle: #6e7681;
+  /* Tertiary text/timestamps */
+
+  /* ============================================
+     Success States - Green
+     ============================================ */
+  --color-aegis-success: #238636;
+  /* Success primary */
+  --color-aegis-success-bright: #2ea043;
+  /* Success bright */
+  --color-aegis-success-light: #7ee787;
+  /* Success text/icons */
+  --color-aegis-success-muted: #1a7f37;
+  /* Success dark */
+
+  /* ============================================
+     Active/Info States - Blue
+     ============================================ */
+  --color-aegis-info: #58a6ff;
+  /* Info/active bright */
+  --color-aegis-info-dark: #1f6feb;
+  /* Info/active primary */
+  --color-aegis-info-darker: #0969da;
+  /* Info/active dark */
+  --color-aegis-info-muted: #388bfd;
+  /* Info muted */
+
+  /* ============================================
+     Warning States - Orange/Yellow
+     ============================================ */
+  --color-aegis-warning: #f0883e;
+  /* Warning primary */
+  --color-aegis-warning-light: #d29922;
+  /* Warning light */
+  --color-aegis-warning-dark: #bb8009;
+  /* Warning dark */
+
+  /* ============================================
+     Error/Danger States - Red
+     ============================================ */
+  --color-aegis-error: #ff7b72;
+  /* Error bright/text */
+  --color-aegis-error-dark: #da3633;
+  /* Error primary */
+  --color-aegis-error-darker: #b62324;
+  /* Error dark */
+  --color-aegis-error-muted: #f85149;
+  /* Error muted */
+
+  /* ============================================
+     Accent Colors - Additional Blues
+     ============================================ */
+  --color-aegis-accent: #58a6ff;
+  /* Primary accent */
+  --color-aegis-accent-hover: #1f6feb;
+  /* Accent hover */
+  --color-aegis-accent-muted: #388bfd;
+  /* Accent muted */
+
+  /* ============================================
+     Tier 0 Colors - Purple (for T0 assets/findings)
+     ============================================ */
+  --color-aegis-t0: #a855f7;
+  /* T0 primary - Purple */
+  --color-aegis-t0-dark: #9333ea;
+  /* T0 dark - Purple darker */
+  --color-aegis-t0-light: #c084fc;
+  /* T0 light - Purple lighter */
+  --color-aegis-t0-muted: #7c3aed;
+  /* T0 muted */
+}
+
+@layer base {
+  body {
+    @apply bg-aegis-dark text-aegis-text;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  /* Scrollbar Styling */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    @apply bg-aegis-dark rounded;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    @apply bg-aegis-border rounded;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    @apply bg-aegis-border-muted;
+  }
+}
+
+@layer components {
+
+  /* ============================================
+     Card Components
+     ============================================ */
+  .aegis-card {
+    @apply bg-aegis-gray rounded-lg p-6 border border-aegis-border-light;
+  }
+
+  .aegis-card-hover {
+    @apply bg-aegis-gray rounded-lg p-6 border border-aegis-border-light hover:border-aegis-border hover:bg-aegis-gray-hover transition-colors duration-200;
+  }
+
+  .aegis-card-elevated {
+    @apply bg-aegis-gray-light rounded-lg p-6 border border-aegis-border;
+  }
+
+  /* ============================================
+     Button Components
+     ============================================ */
+  .aegis-button {
+    @apply px-4 py-2 rounded-lg bg-aegis-info-dark text-white font-medium transition-colors hover:bg-aegis-info-darker;
+  }
+
+  .aegis-button-success {
+    @apply px-4 py-2 rounded-lg bg-aegis-success text-white font-medium transition-colors hover:bg-aegis-success-bright;
+  }
+
+  .aegis-button-danger {
+    @apply px-4 py-2 rounded-lg bg-aegis-error-dark text-white font-medium transition-colors hover:bg-aegis-error;
+  }
+
+  .aegis-button-secondary {
+    @apply px-4 py-2 rounded-lg bg-aegis-gray-light text-aegis-text font-medium border border-aegis-border transition-colors hover:bg-aegis-gray-hover hover:border-aegis-border-muted;
+  }
+
+  /* ============================================
+     Status Badges
+     ============================================ */
+  .aegis-badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-aegis-success/10 text-aegis-success-light border border-aegis-success/20;
+  }
+
+  .aegis-badge-warning {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-aegis-warning/10 text-aegis-warning border border-aegis-warning/20;
+  }
+
+  .aegis-badge-error {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-aegis-error-dark/10 text-aegis-error border border-aegis-error-dark/20;
+  }
+
+  .aegis-badge-info {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-aegis-info-dark/10 text-aegis-info border border-aegis-info-dark/20;
+  }
+
+  .aegis-badge-t0 {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-aegis-t0/10 text-aegis-t0-light border border-aegis-t0/20;
+  }
+
+  /* ============================================
+     Terminal/Code Blocks
+     ============================================ */
+  .aegis-terminal {
+    @apply bg-aegis-darker rounded-lg p-4 font-mono text-sm text-aegis-success-light border border-aegis-border;
+  }
+
+  .aegis-code {
+    @apply bg-aegis-gray-light rounded px-1.5 py-0.5 font-mono text-sm text-aegis-info;
+  }
+
+  /* ============================================
+     Status Indicators (for steppers, progress)
+     ============================================ */
+  .aegis-status-pending {
+    @apply bg-aegis-gray-light border-aegis-border text-aegis-text-muted;
+  }
+
+  .aegis-status-active {
+    @apply bg-aegis-info-dark border-aegis-info text-white;
+  }
+
+  .aegis-status-completed {
+    @apply bg-aegis-success border-aegis-success-bright text-white;
+  }
+
+  .aegis-status-error {
+    @apply bg-aegis-error-dark border-aegis-error text-white;
+  }
+
+  /* ============================================
+     Progress Bars
+     ============================================ */
+  .aegis-progress-container {
+    @apply h-2 bg-aegis-gray-light rounded-full overflow-hidden;
+  }
+
+  .aegis-progress-bar {
+    @apply h-full bg-gradient-to-r from-aegis-info-dark to-aegis-info transition-all duration-500 ease-out;
+  }
+
+  /* ============================================
+     Alerts/Notifications
+     ============================================ */
+  .aegis-alert-success {
+    @apply bg-aegis-success/10 border border-aegis-success/20 rounded-lg p-4 text-aegis-success-light;
+  }
+
+  .aegis-alert-warning {
+    @apply bg-aegis-warning/10 border border-aegis-warning/20 rounded-lg p-4 text-aegis-warning;
+  }
+
+  .aegis-alert-error {
+    @apply bg-aegis-error-dark/10 border border-aegis-error-dark/20 rounded-lg p-4 text-aegis-error;
+  }
+
+  .aegis-alert-info {
+    @apply bg-aegis-info-dark/10 border border-aegis-info-dark/20 rounded-lg p-4 text-aegis-info;
+  }
+
+  .aegis-alert-t0 {
+    @apply bg-aegis-t0/10 border border-aegis-t0/20 rounded-lg p-4 text-aegis-t0-light;
+  }
+
+  /* ============================================
+     Input Fields
+     ============================================ */
+  .aegis-input {
+    @apply bg-aegis-gray border border-aegis-border rounded-lg px-4 py-2 text-aegis-text placeholder-aegis-text-subtle focus:outline-none focus:ring-2 focus:ring-aegis-info focus:border-transparent transition-all;
+  }
+
+  /* ============================================
+     Dividers
+     ============================================ */
+  .aegis-divider {
+    @apply border-t border-aegis-border-light;
+  }
+
+  .aegis-divider-vertical {
+    @apply border-l border-aegis-border-light;
+  }
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+@layer utilities {
+  .text-success {
+    @apply text-aegis-success-light;
+  }
+
+  .text-warning {
+    @apply text-aegis-warning;
+  }
+
+  .text-error {
+    @apply text-aegis-error;
+  }
+
+  .text-info {
+    @apply text-aegis-info;
+  }
+
+  .text-muted {
+    @apply text-aegis-text-muted;
+  }
+
+  .text-subtle {
+    @apply text-aegis-text-subtle;
+  }
+
+  .text-t0 {
+    @apply text-aegis-t0;
+  }
+
+  /* Shadow utilities */
+  .shadow-success {
+    box-shadow: 0 0 0 4px rgba(46, 160, 67, 0.15);
+  }
+
+  .shadow-info {
+    box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.15);
+  }
+
+  .shadow-error {
+    box-shadow: 0 0 0 4px rgba(248, 81, 73, 0.15);
+  }
+
+  .shadow-warning {
+    box-shadow: 0 0 0 4px rgba(240, 136, 62, 0.15);
+  }
+}
+
+/* ============================================
+   Animation Classes (from report UI)
+   ============================================ */
+@keyframes check {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  75% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-check {
+  animation: check 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   React Flow Graph Styles
+   ============================================ */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.animate-dash {
+  animation: dash 0.5s linear infinite;
+}
+
+/* React Flow Controls styling */
+.react-flow__controls {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+.react-flow__controls-button {
+  background: #161b22 !important;
+  border-bottom: 1px solid #30363d !important;
+  color: #8b949e !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #21262d !important;
+  color: #58a6ff !important;
+}
+
+.react-flow__controls-button:first-child {
+  border-radius: 7px 7px 0 0 !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+  border-radius: 0 0 7px 7px !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+}
+
+/* React Flow Edge styling */
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* React Flow Attribution hiding */
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* React Flow MiniMap styling */
+.react-flow__minimap {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+}
+
+/* Node selection ring */
+.react-flow__node.selected {
+  outline: none !important;
+}
